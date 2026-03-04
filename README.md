@@ -1,55 +1,119 @@
-# Static Timing Analysis Engine
+# Static Timing Analysis Prototype
 
-A C++17 static timing analysis engine for gate-level digital designs. The tool parses a gate-level Verilog netlist, a Liberty timing library, and SDC-style timing constraints, builds a timing DAG, propagates arrival and required times, computes setup and hold slack, and emits path-oriented timing reports.
+I built this project to learn the basics of static timing analysis and to practice building a parser-heavy graph algorithm project in C++.
 
-This project is designed to demonstrate the core ideas behind industrial STA tools in a recruiter-friendly, inspectable codebase:
+This is a small educational STA prototype, not a production EDA tool. I kept the scope intentionally narrow so I could understand the core ideas well and explain them clearly.
 
-- timing graph construction from netlist and library data
-- topological forward and backward traversal
-- setup and hold analysis
-- multi-clock path checking
-- critical path reconstruction
-- incremental timing updates after arc-delay changes
+## What I Built
 
-## What The Tool Does
+I wrote a C++17 command-line tool that:
 
-Given:
+- parses a small subset of gate-level Verilog
+- parses a simplified Liberty timing library
+- parses basic SDC-style timing constraints
+- builds a timing graph
+- computes arrival time, required time, and slack
+- reports a few timing paths
 
-- a Liberty `.lib` file with cell pin directions and timing arcs
-- a gate-level Verilog `.v` netlist
-- an SDC-style Tcl constraint file
+I also included:
 
-the engine will:
+- one basic example design
+- one regression test
 
-1. Build timing graph nodes for ports and instance pins.
-2. Add graph edges for combinational cell arcs and net connectivity.
-3. Seed startpoints from input delays and register clock-to-Q arcs.
-4. Propagate maximum arrival times for setup analysis.
-5. Propagate minimum arrival times for hold analysis.
-6. Back-propagate required times from outputs and register data pins.
-7. Compute slack on all valid endpoints.
-8. Reconstruct the worst setup and hold paths.
-9. Re-run timing after delay overrides, with optional incremental update mode.
+## Short Explanation
 
-## Timing Concepts Used
+If I had to explain this project quickly in an interview, I would say:
 
-- `Arrival time`: when data reaches a node.
-- `Required time`: latest or earliest legal time for that node.
-- `Setup slack`: `required_max - arrival_max`.
-- `Hold slack`: `arrival_min - required_min`.
-- `WNS`: worst negative slack.
-- `TNS`: total negative slack.
-- `Startpoint`: primary input or sequential output pin.
-- `Endpoint`: primary output or sequential data input pin.
-- `Critical path`: the path with the worst slack.
+> I built a small static timing analysis prototype in C++. It parses a simplified netlist, timing library, and constraint file, builds a DAG, propagates timing forward and backward, and reports setup and hold slack.
+
+That is the level I would present it at for most new-grad software roles.
+
+## Why I Think This Is A Good New-Grad Project
+
+I think this project is strong because it shows:
+
+- C++ implementation skill
+- parser design
+- graph modeling
+- graph traversal algorithms
+- clear handling of inputs, outputs, and reports
+
+At the same time, I do not claim that it is a full STA engine. I present it as a focused prototype that covers the main concepts.
+
+## What The Program Does
+
+I simplified the core flow into a few steps:
+
+1. I parse the input files.
+2. I create graph nodes for ports and instance pins.
+3. I add edges for timing arcs and net connections.
+4. I seed timing startpoints.
+5. I run a forward pass to compute arrival times.
+6. I run a backward pass to compute required times.
+7. I compute setup and hold slack.
+8. I print path reports.
+
+## Input And Output
+
+### Input
+
+The program needs three input files:
+
+1. A Liberty file: cell timing model
+2. A Verilog netlist: gate-level circuit
+3. A constraint file: clock and I/O timing constraints
+
+Command-line format:
+
+```text
+sta --liberty <file.lib> --netlist <file.v> --constraints <file.sdc> [--report-paths N]
+```
+
+### Output
+
+The program prints a text timing report to the terminal.
+
+The report contains:
+
+- design summary
+- number of checked paths
+- worst setup slack
+- worst hold slack
+- setup path details
+- hold path details
+
+Typical fields in the output are:
+
+- `Design`
+- `Instance Count`
+- `Clock Count`
+- `Checked Paths`
+- `WNS (setup)`
+- `WNS (hold)`
+- `Path Type`
+- `Startpoint`
+- `Endpoint`
+- `Arrival`
+- `Required`
+- `Slack`
+
+## Example Inputs
+
+I included one working example in `examples/basic/`.
+
+The files are:
+
+- `examples/basic/basic.lib`
+- `examples/basic/basic.v`
+- `examples/basic/basic.sdc`
 
 ## Supported Input Subset
 
-The parser is intentionally practical rather than full-language complete. It supports the subset needed for realistic demos and coursework-quality gate-level STA flows.
+I intentionally support a limited subset of each file format.
 
 ### Liberty
 
-Supported:
+I support a small subset including:
 
 - `cell(...)`
 - `pin(...)`
@@ -58,46 +122,65 @@ Supported:
 - `timing()`
 - `related_pin`
 - `timing_type`
-- `timing_sense`
 - `cell_rise`
 - `cell_fall`
 - `rise_constraint`
 - `fall_constraint`
 
-Recognized timing types:
-
-- `combinational`
-- `rising_edge`
-- `falling_edge`
-- `setup_rising`
-- `hold_rising`
-
 ### Verilog
 
-Supported:
+I support:
 
 - ANSI-style module headers
-- separate `input`, `output`, and `wire` declarations
-- named-pin gate instantiations such as `.A(net)`
-- simple `assign lhs = rhs;`
-
-Assumptions:
-
-- the combinational portion of the timing graph is acyclic
-- sequential loops are cut by register boundaries
-- the netlist is already gate-level
+- `input`, `output`, and `wire` declarations
+- named-pin gate instantiations
+- simple `assign` statements
 
 ### Constraints
 
-Supported SDC-style commands:
+I support a basic SDC-style subset:
 
 - `create_clock`
 - `set_clock_uncertainty`
 - `set_input_delay`
 - `set_output_delay`
-- `set_clock_groups -group {...}`
 
-## Project Layout
+## Timing Concepts I Used
+
+The main timing ideas in this project are:
+
+- `Arrival time`
+- `Required time`
+- `Setup slack`
+- `Hold slack`
+- `Startpoint`
+- `Endpoint`
+- `Critical path`
+
+I only implemented the basic versions of these ideas.
+
+## What I Did Not Build
+
+I think this section is important because it keeps the project honest.
+
+I did not build:
+
+- a full Liberty parser
+- detailed delay table interpolation
+- RC wire modeling
+- propagated clock trees
+- advanced signoff timing features
+- a production-quality constraint engine
+
+So if someone asks, I would describe this as:
+
+> a learning-oriented STA prototype that demonstrates the main graph and timing ideas
+
+not:
+
+> a replacement for commercial STA tools
+
+## Project Structure
 
 ```text
 .
@@ -106,12 +189,24 @@ Supported SDC-style commands:
 |-- src/engine.cpp
 |-- src/main.cpp
 |-- tests/test_sta.cpp
-|-- examples/basic/
-|-- examples/multiclock/
-`-- scripts/sta_shell.tcl
+`-- examples/basic/
 ```
 
-## Build
+## How To Build
+
+### Direct g++
+
+Build the main program:
+
+```powershell
+g++ -std=gnu++17 -Iinclude src\engine.cpp src\main.cpp -o sta.exe
+```
+
+Build the test binary:
+
+```powershell
+g++ -std=gnu++17 -Iinclude src\engine.cpp tests\test_sta.cpp -o sta_tests.exe
+```
 
 ### With CMake
 
@@ -120,28 +215,9 @@ cmake -S . -B build
 cmake --build build
 ```
 
-Binaries:
+## How To Run
 
-- `sta`: command-line STA engine
-- `sta_tests`: regression test binary
-
-### Direct g++
-
-```bash
-g++ -std=gnu++17 -Iinclude src/engine.cpp src/main.cpp -o sta
-g++ -std=gnu++17 -Iinclude src/engine.cpp tests/test_sta.cpp -o sta_tests
-```
-
-## Run The Analyzer
-
-```bash
-./sta --liberty examples/basic/basic.lib \
-      --netlist examples/basic/basic.v \
-      --constraints examples/basic/basic.sdc \
-      --report-paths 3
-```
-
-Windows PowerShell:
+From the project root, run:
 
 ```powershell
 .\sta.exe --liberty examples\basic\basic.lib `
@@ -150,159 +226,155 @@ Windows PowerShell:
           --report-paths 3
 ```
 
-## Example Output
+## What I Should See
 
-The report includes:
+When the program works, I should see:
 
-- summary metrics
-- number of checked paths
-- WNS and TNS
-- setup and hold violations
-- path-by-path breakdown with node sequence and arrival values
+- a summary banner called `STA Prototype Summary`
+- a nonzero `Checked Paths` count
+- setup and hold slack values
+- at least a few path sections
 
-Typical sections look like:
-
-- `Path Type`
-- `Startpoint`
-- `Endpoint`
-- `Launch Clock`
-- `Capture Clock`
-- `Arrival`
-- `Required`
-- `Slack`
-- detailed path points
-
-## Incremental Timing Update
-
-The engine supports delay overrides on existing cell arcs.
-
-Override file format:
+Example of the kind of output I should see:
 
 ```text
-<instance_name> <from_pin->to_pin> <max_delay> <min_delay>
+============================================================
+STA Prototype Summary
+============================================================
+Design              : basic_top
+Instance Count      : 3
+Clock Count         : 1
+Checked Paths       : 4
+WNS (setup)         : 1.780
+WNS (hold)          : 0.140
+...
 ```
 
-Example:
-
-```text
-u_and A->Y 0.55 0.48
-```
-
-Run with incremental update:
-
-```bash
-./sta --liberty examples/basic/basic.lib \
-      --netlist examples/basic/basic.v \
-      --constraints examples/basic/basic.sdc \
-      --override-file examples/basic/override.txt \
-      --incremental
-```
-
-What happens:
-
-- matching arc delays are updated
-- affected forward cone timing is recomputed
-- affected backward cone required times are recomputed
-- reports are regenerated
-
-## Multi-Clock Support
-
-The engine tracks timing states per launch clock domain and evaluates endpoints against their capture clocks.
-
-Supported behaviors:
-
-- register-to-register timing across different clocks
-- input-to-register timing
-- register-to-output timing
-- asynchronous clock grouping via `set_clock_groups`
-
-The `examples/multiclock` design demonstrates cross-domain analysis.
+If `Checked Paths` is `0`, then something is wrong with parsing, connectivity, or the input files.
 
 ## Testing
 
-Run the unit-style regression binary:
+I included a small regression test.
 
-```bash
-./sta_tests
+Build:
+
+```powershell
+g++ -std=gnu++17 -Iinclude src\engine.cpp tests\test_sta.cpp -o sta_tests.exe
 ```
 
-What the test checks:
+Run:
 
-- Liberty loading
-- Verilog loading
-- constraint parsing
+```powershell
+.\sta_tests.exe
+```
+
+If the test passes, it prints nothing and exits successfully.
+
+The test checks:
+
+- file parsing
 - timing graph construction
-- end-to-end setup and hold report generation
+- end-to-end report generation
 
-## Tcl Driver
+## How I Would Explain The Design
 
-The repository includes a small Tcl wrapper:
+If I had to explain the design in a simple way, I would say:
 
-```bash
-tclsh scripts/sta_shell.tcl <liberty> <netlist> <constraints> ?extra args...?
-```
+- I parse the timing library, netlist, and constraints into in-memory structures.
+- I model the circuit as a directed acyclic graph.
+- I use a topological forward pass to compute arrival times.
+- I use a backward pass to compute required times.
+- I compute setup and hold slack at valid endpoints.
+- I reconstruct a few timing paths for the final report.
 
-It forwards arguments to the compiled CLI so the project still has a Tcl entry point without needing a custom embedded Tcl shell.
+That is the core of the project. I would stay at that level unless the interviewer asks for more detail.
 
-## Implementation Notes
+## Interview Prep Notes
 
-The timing engine models:
+If I want to use this repo later to prepare for interviews, these are the main questions I should be ready for.
 
-- nodes: ports and instance pins
-- edges: combinational arcs and net edges
-- startpoints: input delays and clock-to-Q arcs
-- endpoints: primary outputs and sequential data pins
+### What problem does this project solve?
 
-Core algorithm:
+It analyzes timing in a small gate-level digital design. Given a netlist, a cell timing library, and constraints, it estimates when signals arrive, when they are required, and how much slack each path has.
 
-1. Parse design data.
-2. Build timing DAG.
-3. Topologically sort the DAG.
-4. Forward-propagate max and min arrival times.
-5. Initialize endpoint required times.
-6. Reverse-propagate required times.
-7. Compute setup and hold slack.
-8. Reconstruct critical paths from predecessor edges.
+### What data structure did I use?
 
-## Current Limitations
+I used a directed acyclic graph where:
 
-This is a serious educational STA engine, but it is not a full commercial parser or signoff tool.
+- nodes represent ports or instance pins
+- edges represent timing arcs or net connections
 
-Current limitations:
+### Why did I use a DAG?
 
-- no full Liberty grammar support
-- no slew or load interpolation tables
-- no wire RC modeling
-- no propagated clock tree analysis
-- no latch transparency analysis
-- no CPPR, OCV, AOCV, or POCV
-- no false-path or multicycle-path coverage beyond basic asynchronous clock grouping
+Because timing propagation is naturally a graph problem, and topological traversal makes forward and backward timing computation straightforward for combinational logic between sequential boundaries.
 
-## Why This Project Is Valuable
+### What algorithms did I use?
 
-This project demonstrates:
+The main algorithm is topological traversal:
 
-- graph modeling of hardware timing
-- parser construction for hardware design formats
-- static graph algorithms
-- timing signoff concepts used in EDA
-- performance-oriented incremental recomputation
+- forward traversal for arrival times
+- backward traversal for required times
 
-For interviews, it gives you concrete material to discuss around:
+### What are the most important outputs?
 
-- STA graph construction
-- setup/hold equations
-- path-based reporting
-- multi-clock reasoning
-- incremental analysis tradeoffs
+The most important outputs are:
 
-## Validation In This Environment
+- setup slack
+- hold slack
+- worst paths
 
-Validated locally with:
+### What limitations should I say clearly?
 
-- `g++ 6.3.0`
-- direct compilation using `g++ -std=gnu++17`
-- `sta_tests.exe`
-- sample runs on `examples/basic` and `examples/multiclock`
+I should say clearly that:
 
-`cmake` and `tclsh` were not installed in the current environment, so CMake/Tcl commands were prepared but not executed here.
+- this is a prototype
+- it supports a simplified subset of Liberty, Verilog, and SDC
+- it does not implement advanced signoff features
+
+### What is the best way to describe this for SWE roles?
+
+I would describe it as:
+
+> a C++ parser and graph algorithms project with domain-specific timing logic
+
+### What is the best way to describe this for EDA roles?
+
+I would describe it as:
+
+> a small static timing analysis prototype built to learn timing graph construction and slack computation
+
+## How I Would Present It On A Resume
+
+I would keep the wording simple and honest.
+
+Good version:
+
+- Built a C++ static timing analysis prototype that parses simplified Verilog, Liberty, and SDC-style inputs.
+- Modeled timing as a DAG and implemented forward/backward graph traversals to compute arrival time, required time, and setup/hold slack.
+- Added timing path reporting for a small gate-level example design.
+
+I would avoid wording that makes it sound like a signoff-quality industrial tool.
+
+## Best Interview Framing
+
+For general software engineering roles, I would frame this project as:
+
+- a C++ parser and graph algorithms project
+
+For EDA-related roles, I would frame it as:
+
+- a small STA prototype built to learn timing analysis fundamentals
+
+That way, I can match the explanation to the audience without overselling it.
+
+## Final Take
+
+I do think this topic can get deep very quickly, so I do not want to oversell it on GitHub.
+
+The safer and better framing is:
+
+- I built a small, clean, educational STA prototype
+- I understand the main algorithmic ideas
+- I can explain the design choices and limitations
+
+I think that is a much better position for a new grad than trying to present this as a full EDA tool.

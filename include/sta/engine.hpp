@@ -94,14 +94,6 @@ struct ConstraintSet {
     std::set<std::pair<std::string, std::string> > false_clock_pairs;
 };
 
-struct DelayOverride {
-    std::string instance_name;
-    std::string from_pin;
-    std::string to_pin;
-    double max_delay = 0.0;
-    double min_delay = 0.0;
-};
-
 struct PathPoint {
     std::string node_name;
     std::string edge_name;
@@ -138,7 +130,6 @@ public:
 
     bool build_timing_graph();
     bool analyze();
-    bool apply_delay_overrides(const std::vector<DelayOverride>& overrides, bool incremental);
 
     std::string last_error() const;
     const AnalysisSummary& summary() const;
@@ -147,8 +138,6 @@ public:
 
     std::string build_summary_report() const;
     std::string build_path_report(std::size_t max_paths_per_type) const;
-
-    static bool parse_override_file(const std::string& path, std::vector<DelayOverride>* overrides, std::string* error);
 
 private:
     struct Edge {
@@ -214,10 +203,6 @@ private:
     void build_reports();
 
     void reset_analysis_state();
-    void compute_forward_subset(const std::set<int>& seeds);
-    void compute_backward_subset(const std::set<int>& seeds);
-    std::set<int> collect_descendants(const std::set<int>& nodes) const;
-    std::set<int> collect_ancestors(const std::set<int>& nodes) const;
     void initialize_endpoint_requirements_for_node(int node_id);
     bool clocks_are_false_path(const std::string& launch_clock, const std::string& capture_clock) const;
 

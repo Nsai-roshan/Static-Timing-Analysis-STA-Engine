@@ -10,7 +10,7 @@ namespace {
 void print_usage() {
     std::cout
         << "Usage: sta --liberty <file.lib> --netlist <file.v> --constraints <file.sdc>\n"
-        << "           [--report-paths <count>] [--override-file <file>] [--incremental]\n";
+        << "           [--report-paths <count>]\n";
 }
 
 }  // namespace
@@ -19,9 +19,7 @@ int main(int argc, char** argv) {
     std::string liberty_path;
     std::string netlist_path;
     std::string constraint_path;
-    std::string override_path;
     std::size_t report_paths = 3;
-    bool incremental = false;
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
@@ -31,12 +29,8 @@ int main(int argc, char** argv) {
             netlist_path = argv[++i];
         } else if (arg == "--constraints" && i + 1 < argc) {
             constraint_path = argv[++i];
-        } else if (arg == "--override-file" && i + 1 < argc) {
-            override_path = argv[++i];
         } else if (arg == "--report-paths" && i + 1 < argc) {
             report_paths = static_cast<std::size_t>(std::atoi(argv[++i]));
-        } else if (arg == "--incremental") {
-            incremental = true;
         } else if (arg == "--help" || arg == "-h") {
             print_usage();
             return 0;
@@ -72,19 +66,6 @@ int main(int argc, char** argv) {
     if (!engine.analyze()) {
         std::cerr << "Analysis failed: " << engine.last_error() << "\n";
         return 1;
-    }
-
-    if (!override_path.empty()) {
-        std::vector<sta::DelayOverride> overrides;
-        std::string error;
-        if (!sta::StaEngine::parse_override_file(override_path, &overrides, &error)) {
-            std::cerr << error << "\n";
-            return 1;
-        }
-        if (!engine.apply_delay_overrides(overrides, incremental)) {
-            std::cerr << "Override application failed: " << engine.last_error() << "\n";
-            return 1;
-        }
     }
 
     std::cout << engine.build_summary_report();

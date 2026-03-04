@@ -1289,147 +1289,6 @@ void StaEngine::build_reports() {
               });
 }
 
-std::set<int> StaEngine::collect_descendants(const std::set<int>& nodes) const {
-    std::set<int> visited = nodes;
-    std::queue<int> queue;
-    for (std::set<int>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
-        queue.push(*it);
-    }
-
-    while (!queue.empty()) {
-        const int node = queue.front();
-        queue.pop();
-        for (std::size_t i = 0; i < outgoing_edges_[node].size(); ++i) {
-            const int next = edges_[outgoing_edges_[node][i]].to;
-            if (visited.insert(next).second) {
-                queue.push(next);
-            }
-        }
-    }
-    return visited;
-}
-
-std::set<int> StaEngine::collect_ancestors(const std::set<int>& nodes) const {
-    std::set<int> visited = nodes;
-    std::queue<int> queue;
-    for (std::set<int>::const_iterator it = nodes.begin(); it != nodes.end(); ++it) {
-        queue.push(*it);
-    }
-
-    while (!queue.empty()) {
-        const int node = queue.front();
-        queue.pop();
-        for (std::size_t i = 0; i < incoming_edges_[node].size(); ++i) {
-            const int previous = edges_[incoming_edges_[node][i]].from;
-            if (visited.insert(previous).second) {
-                queue.push(previous);
-            }
-        }
-    }
-    return visited;
-}
-
-void StaEngine::compute_forward_subset(const std::set<int>& seeds) {
-    for (std::size_t order_index = 0; order_index < topo_order_.size(); ++order_index) {
-        const int node = topo_order_[order_index];
-        if (seeds.count(node) == 0U) {
-            continue;
-        }
-        for (std::size_t edge_index = 0; edge_index < outgoing_edges_[node].size(); ++edge_index) {
-            const Edge& edge = edges_[outgoing_edges_[node][edge_index]];
-            for (std::unordered_map<std::string, DomainTiming>::const_iterator state_it = timing_states_[node].begin();
-                 state_it != timing_states_[node].end(); ++state_it) {
-                DomainTiming& next = timing_states_[edge.to][state_it->first];
-                if (state_it->second.max_valid) {
-                    const double candidate = state_it->second.arrival_max + edge.max_delay;
-                    if (!next.max_valid || candidate > next.arrival_max) {
-                        next.max_valid = true;
-                        next.arrival_max = candidate;
-                        next.pred_max_edge = edge.id;
-                    }
-                }
-                if (state_it->second.min_valid) {
-                    const double candidate = state_it->second.arrival_min + edge.min_delay;
-                    if (!next.min_valid || candidate < next.arrival_min) {
-                        next.min_valid = true;
-                        next.arrival_min = candidate;
-                        next.pred_min_edge = edge.id;
-                    }
-                }
-            }
-        }
-    }
-}
-
-void StaEngine::compute_backward_subset(const std::set<int>& seeds) {
-    for (std::size_t order_index = topo_order_.size(); order_index > 0; --order_index) {
-        const int node = topo_order_[order_index - 1U];
-        if (seeds.count(node) == 0U) {
-            continue;
-        }
-        for (std::size_t edge_index = 0; edge_index < incoming_edges_[node].size(); ++edge_index) {
-            const Edge& edge = edges_[incoming_edges_[node][edge_index]];
-            for (std::unordered_map<std::string, DomainTiming>::const_iterator state_it = timing_states_[node].begin();
-                 state_it != timing_states_[node].end(); ++state_it) {
-                DomainTiming& previous = timing_states_[edge.from][state_it->first];
-                if (state_it->second.req_max_valid) {
-                    const double candidate = state_it->second.required_max - edge.max_delay;
-                    if (!previous.req_max_valid || candidate < previous.required_max) {
-                        previous.req_max_valid = true;
-                        previous.required_max = candidate;
-                    }
-                }
-                if (state_it->second.req_min_valid) {
-                    const double candidate = state_it->second.required_min - edge.min_delay;
-                    if (!previous.req_min_valid || candidate > previous.required_min) {
-                        previous.req_min_valid = true;
-                        previous.required_min = candidate;
-                    }
-                }
-            }
-        }
-    }
-}
-
-bool StaEngine::apply_delay_overrides(const std::vector<DelayOverride>& overrides, bool incremental) {
-    std::set<int> changed_sources;
-    std::set<int> changed_sinks;
-
-    for (std::size_t override_index = 0; override_index < overrides.size(); ++override_index) {
-        bool matched = false;
-        for (std::size_t edge_index = 0; edge_index < edges_.size(); ++edge_index) {
-            Edge& edge = edges_[edge_index];
-            if (edge.instance_name == overrides[override_index].instance_name &&
-                edge.from_pin == overrides[override_index].from_pin &&
-                edge.to_pin == overrides[override_index].to_pin) {
-                edge.max_delay = overrides[override_index].max_delay;
-                edge.min_delay = overrides[override_index].min_delay;
-                changed_sources.insert(edge.from);
-                changed_sinks.insert(edge.to);
-                matched = true;
-            }
-        }
-        if (!matched) {
-            last_error_ = "Override did not match any arc on instance '" + overrides[override_index].instance_name + "'.";
-            return false;
-        }
-    }
-
-    if (!incremental) {
-        return analyze();
-    }
-
-    reset_analysis_state();
-    seed_startpoints();
-    forward_propagate_all();
-    compute_forward_subset(collect_descendants(changed_sinks));
-    backward_propagate_all();
-    compute_backward_subset(collect_ancestors(changed_sources));
-    collect_endpoint_checks();
-    build_reports();
-    return true;
-}
-
 std::string StaEngine::last_error() const {
     return last_error_;
 }
@@ -1449,7 +1308,7 @@ const std::vector<PathReport>& StaEngine::hold_reports() const {
 std::string StaEngine::build_summary_report() const {
     std::ostringstream report;
     report << "============================================================\n";
-    report << "Static Timing Analysis Summary\n";
+    report << "STA Prototype Summary\n";
     report << "============================================================\n";
     report << "Design              : " << netlist_.module_name << "\n";
     report << "Instance Count      : " << netlist_.instances.size() << "\n";
@@ -1497,46 +1356,6 @@ std::string StaEngine::build_path_report(std::size_t max_paths_per_type) const {
     }
 
     return report.str();
-}
-
-bool StaEngine::parse_override_file(const std::string& path, std::vector<DelayOverride>* overrides, std::string* error) {
-    overrides->clear();
-    std::ifstream input(path.c_str());
-    if (!input) {
-        *error = "Unable to open override file: " + path;
-        return false;
-    }
-
-    std::string line;
-    int line_number = 0;
-    while (std::getline(input, line)) {
-        ++line_number;
-        line = trim(strip_comment(line, "#"));
-        if (line.empty()) {
-            continue;
-        }
-
-        const std::vector<std::string> tokens = split(line, ' ');
-        if (tokens.size() != 4U) {
-            *error = "Invalid override format on line " + to_string_int(line_number);
-            return false;
-        }
-
-        DelayOverride override_entry;
-        override_entry.instance_name = tokens[0];
-        const std::size_t arrow = tokens[1].find("->");
-        if (arrow == std::string::npos) {
-            *error = "Expected A->Y pin syntax on line " + to_string_int(line_number);
-            return false;
-        }
-        override_entry.from_pin = tokens[1].substr(0U, arrow);
-        override_entry.to_pin = tokens[1].substr(arrow + 2U);
-        override_entry.max_delay = parse_number(tokens[2]);
-        override_entry.min_delay = parse_number(tokens[3]);
-        overrides->push_back(override_entry);
-    }
-
-    return true;
 }
 
 }  // namespace sta

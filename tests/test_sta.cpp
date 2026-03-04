@@ -96,7 +96,7 @@ int main() {
     expect(!engine.setup_reports().empty(), "setup report exists");
     expect(!engine.hold_reports().empty(), "hold report exists");
     expect(engine.summary().path_count >= 2U, "path count");
-    expect(engine.build_summary_report().find("Static Timing Analysis Summary") != std::string::npos, "summary text");
+    expect(engine.build_summary_report().find("STA Prototype Summary") != std::string::npos, "summary text");
 
     return 0;
 }
