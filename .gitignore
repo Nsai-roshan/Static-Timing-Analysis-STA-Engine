@@ -1,0 +1,14 @@
+build/
+*.exe
+*.o
+*.obj
+*.a
+*.dll
+*.pdb
+*.ilk
+*.log
+diag.cpp
+boost_probe.cpp
+test.lib
+test.v
+test.sdc
